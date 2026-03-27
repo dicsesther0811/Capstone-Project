@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FoodLens - AI 음식 분석 & 식단 추천</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.12.7/Recharts.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600&family=DM+Sans:wght@300;400;500;700&display=swap');
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',sans-serif;background:#f8f9f7;color:#1a1a1a;-webkit-font-smoothing:antialiased;}
+    .screen{min-height:100vh;display:flex;flex-direction:column;}
+    .header{background:#1c2b1e;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 10px rgba(0,0,0,0.15);}
+    .logo{font-family:'Fraunces',serif;font-size:20px;color:#a8d5a2;}
+    .logo span{color:#fff;}
+    .content{flex:1;padding:20px;max-width:600px;margin:0 auto;width:100%;padding-bottom:68px;}
+    .page{display:none;}.page.active{display:block;}
+    .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,#1c2b1e,#2d4a2a);padding:20px;}
+    .auth-card{background:#fff;border-radius:28px;padding:36px 32px;width:100%;max-width:400px;box-shadow:0 24px 60px rgba(0,0,0,0.2);}
+    .auth-logo{font-family:'Fraunces',serif;font-size:32px;color:#2d4a2a;margin-bottom:4px;}
+    .auth-logo span{color:#5a8a54;}
+    .auth-sub{font-size:13px;color:#7a9076;margin-bottom:28px;}
+    .auth-tabs{display:flex;background:#f5f3ee;border-radius:12px;padding:4px;margin-bottom:24px;}
+    .auth-tab{flex:1;padding:9px;text-align:center;border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;transition:all 0.2s;color:#7a9076;border:none;background:transparent;font-family:'DM Sans',sans-serif;}
+    .auth-tab.active{background:#fff;color:#2d4a2a;box-shadow:0 1px 4px rgba(0,0,0,0.08);}
+    .ob-wrap{min-height:100vh;background:#f8f9f7;display:flex;align-items:center;justify-content:center;padding:20px;}
+    .ob-card{background:#fff;border-radius:24px;padding:32px 28px;width:100%;max-width:480px;box-shadow:0 8px 30px rgba(0,0,0,0.08);}
+    .ob-step-bar{display:flex;gap:6px;margin-bottom:28px;}
+    .ob-dot{flex:1;height:4px;border-radius:2px;background:#e8ede7;transition:background 0.3s;}
+    .ob-dot.done{background:#3a6b34;}.ob-dot.active{background:#5a8a54;}
+    .ob-title{font-family:'Fraunces',serif;font-size:22px;color:#1c2b1e;margin-bottom:6px;}
+    .ob-desc{font-size:13px;color:#7a9076;margin-bottom:22px;line-height:1.6;}
+    .form-group{margin-bottom:16px;}
+    .form-label{display:block;font-size:11px;font-weight:700;color:#3a5a36;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;}
+    .form-input,.form-select{width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid #e0eadd;background:#f9fbf9;font-family:'DM Sans',sans-serif;font-size:14px;color:#1c2b1e;outline:none;transition:border 0.2s;}
+    .form-input:focus,.form-select:focus{border-color:#5a8a54;}
+    .form-input::placeholder{color:#b8c8b5;}
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .chip-group{display:flex;flex-wrap:wrap;gap:8px;}
+    .chip{padding:7px 14px;border-radius:999px;border:1.5px solid #e0eadd;font-size:13px;cursor:pointer;transition:all 0.15s;color:#5a7a56;background:#f9fbf9;font-family:'DM Sans',sans-serif;}
+    .chip.selected{background:#e4f4e0;border-color:#5a8a54;color:#2d6b27;font-weight:600;}
+    .btn{padding:12px 22px;border-radius:999px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;font-size:14px;transition:all 0.2s;}
+    .btn-primary{background:#3a6b34;color:#fff;}
+    .btn-primary:hover{background:#2d5428;transform:translateY(-1px);}
+    .btn-primary:disabled{background:#9ab896;cursor:not-allowed;transform:none;}
+    .btn-outline{background:transparent;color:#3a6b34;border:1.5px solid #3a6b34;}
+    .btn-outline:hover{background:#f0f8ee;}
+    .btn-ghost{background:transparent;color:#7a9076;border:none;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+    .btn-block{width:100%;}
+    .btn-sm{padding:8px 16px;font-size:13px;}
+    .btn-row{display:flex;gap:10px;margin-top:20px;}
+    .divider{display:flex;align-items:center;gap:10px;margin:16px 0;color:#b0bfad;font-size:12px;}
+    .divider::before,.divider::after{content:'';flex:1;height:1px;background:#e8ede7;}
+    .error-msg{font-size:12px;color:#c0402a;margin-top:6px;}
+    .hero{background:linear-gradient(135deg,#1c2b1e 0%,#2d4a2a 100%);border-radius:24px;padding:24px;color:#fff;margin-bottom:18px;box-shadow:0 10px 24px rgba(28,43,30,0.18);}
+    .hero-greeting{font-size:12px;color:#8aad86;margin-bottom:4px;}
+    .hero-title{font-family:'Fraunces',serif;font-size:22px;margin-bottom:16px;line-height:1.2;}
+    .hero-stats{display:flex;gap:24px;}
+    .hero-num{font-family:'Fraunces',serif;font-size:22px;color:#a8d5a2;}
+    .hero-lbl{font-size:11px;color:#9dbf9a;margin-top:2px;}
+    .card{background:#fff;border-radius:20px;padding:20px;margin-bottom:14px;box-shadow:0 4px 12px rgba(0,0,0,0.04);border:1px solid #f0f0f0;}
+    .card-sm{background:#f9fbf9;border-radius:12px;padding:14px;border:1px solid #eeeeee;}
+    .section-title{font-family:'Fraunces',serif;font-size:19px;margin:20px 0 12px;color:#1c2b1e;display:flex;justify-content:space-between;align-items:center;}
+    .stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+    .stat-card{background:#fff;border-radius:14px;padding:14px 10px;text-align:center;border:1px solid #eef2ee;box-shadow:0 2px 6px rgba(0,0,0,0.03);}
+    .stat-num{font-family:'Fraunces',serif;font-size:22px;color:#2d4a2a;}
+    .stat-unit{font-size:10px;color:#7a9076;}
+    .stat-lbl{font-size:11px;color:#7a9076;margin-top:2px;}
+    .nut-row{display:flex;align-items:center;gap:10px;margin:8px 0;}
+    .nut-label{font-size:12px;color:#5a7055;width:80px;flex-shrink:0;}
+    .nut-track{flex:1;height:7px;background:#eef2ee;border-radius:999px;overflow:hidden;}
+    .nut-fill{height:100%;border-radius:999px;transition:width 0.6s ease;}
+    .nut-val{font-size:12px;font-weight:600;color:#2d4a2a;width:52px;text-align:right;}
+    .meal-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f5f5f5;}
+    .meal-item:last-child{border-bottom:none;}
+    .meal-thumb{width:46px;height:46px;border-radius:12px;background:#eef5ec;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+    .meal-info{flex:1;}
+    .meal-name{font-weight:600;font-size:14px;color:#1c2b1e;}
+    .meal-meta{font-size:11px;color:#888;margin-top:2px;}
+    .meal-kcal{font-family:'Fraunces',serif;font-size:15px;color:#3a6b34;white-space:nowrap;}
+    .meal-time-badge{font-size:10px;color:#a8d5a2;background:rgba(168,213,162,0.15);padding:2px 7px;border-radius:999px;margin-left:5px;}
+    .tag{display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;margin:2px;}
+    .tag-green{background:#e8f5e9;color:#2e7d32;}
+    .tag-blue{background:#e3f2fd;color:#1565c0;}
+    .alert{border-radius:12px;padding:12px 15px;font-size:13px;margin-bottom:10px;display:flex;gap:8px;align-items:flex-start;line-height:1.5;}
+    .alert-warn{background:#fff8e1;border:1px solid #ffe082;color:#795548;}
+    .alert-ok{background:#edf8ea;border:1px solid #a3d99a;color:#2d6b27;}
+    .alert-red{background:#fdeaea;border:1px solid #f5a0a0;color:#8a2020;}
+    .rec-card{border-left:4px solid #3a6b34;background:#f4f9f3;border-radius:16px;padding:16px;margin-bottom:12px;}
+    .rec-avoid{background:#fff5f5;border-left:4px solid #e57373;border-radius:16px;padding:14px;margin-bottom:10px;}
+    .goal-btn{padding:14px 16px;border-radius:14px;border:1.5px solid #e0eadd;background:#f9fbf9;cursor:pointer;text-align:left;width:100%;font-family:'DM Sans',sans-serif;transition:all 0.15s;margin-bottom:8px;}
+    .goal-btn.selected{background:#e4f4e0;border-color:#5a8a54;}
+    .goal-label{font-weight:600;font-size:14px;color:#1c2b1e;}
+    .goal-btn.selected .goal-label{color:#2d6b27;}
+    .goal-desc{font-size:12px;color:#7a9076;margin-top:3px;}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;}
+    .modal{background:#fff;border-radius:24px;width:100%;max-width:420px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.2);}
+    .modal-header{background:linear-gradient(135deg,#1c2b1e,#2d4a2a);padding:22px;display:flex;align-items:center;gap:14px;}
+    .modal-av{width:48px;height:48px;border-radius:50%;background:#a8d5a2;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-size:20px;color:#1c2b1e;flex-shrink:0;}
+    .modal-name{font-family:'Fraunces',serif;font-size:18px;color:#fff;}
+    .modal-email{font-size:12px;color:#8aad86;margin-top:2px;}
+    .modal-body{padding:20px;max-height:65vh;overflow-y:auto;}
+    .modal-scroll{max-height:360px;overflow-y:auto;padding-right:4px;}
+    .modal-footer{padding:0 20px 20px;display:flex;gap:8px;}
+    .modal-tabs{display:flex;background:#f5f3ee;border-radius:10px;padding:3px;margin-bottom:16px;}
+    .modal-tab{flex:1;padding:7px;text-align:center;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.2s;color:#7a9076;border:none;background:transparent;font-family:'DM Sans',sans-serif;}
+    .modal-tab.active{background:#fff;color:#2d4a2a;box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+    .pf-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f0f0f0;}
+    .pf-row:last-child{border-bottom:none;}
+    .pf-key{font-size:12px;color:#7a9076;}
+    .pf-val{font-size:13px;font-weight:600;color:#1c2b1e;}
+    .edit-section{font-size:11px;font-weight:700;color:#5a8a54;text-transform:uppercase;letter-spacing:0.6px;margin:16px 0 8px;}
+    .edit-section:first-child{margin-top:0;}
+    .upload-zone{border:2px dashed #c8d8c4;border-radius:16px;padding:32px 20px;text-align:center;cursor:pointer;transition:all 0.2s;background:#f9fbf9;}
+    .upload-zone:hover{border-color:#5a8a54;background:#f0f8ee;}
+    .bottom-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;display:flex;justify-content:space-around;align-items:center;height:52px;border-top:1px solid #eee;z-index:100;box-shadow:0 -2px 8px rgba(0,0,0,0.05);}
+    .nav-item{text-align:center;font-size:10px;color:#aaa;cursor:pointer;transition:0.2s;padding:3px 10px;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+    .nav-item.active{color:#3a6b34;font-weight:700;}
+    .nav-icon{font-size:16px;margin-bottom:2px;line-height:1;}
+    .fab{width:44px;height:44px;background:#3a6b34;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 14px rgba(58,107,52,0.45);border:none;cursor:pointer;position:fixed;bottom:60px;right:16px;transition:all 0.2s;z-index:99;}
+    .fab:hover{background:#2d5428;transform:scale(1.08);}
+    .header-right{display:flex;align-items:center;gap:8px;}
+    .user-chip{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;background:rgba(168,213,162,0.15);border:none;font-family:'DM Sans',sans-serif;cursor:pointer;transition:all 0.2s;}
+    .user-chip:hover{background:rgba(168,213,162,0.28);}
+    .user-av{width:22px;height:22px;border-radius:50%;background:#5a8a54;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;}
+    .user-name{font-size:12px;color:#a8d5a2;font-weight:500;}
+    .logout-btn{display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:999px;border:1px solid rgba(168,213,162,0.3);background:transparent;color:#8aad86;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.2s;}
+    .logout-btn:hover{background:rgba(220,80,60,0.12);border-color:rgba(220,80,60,0.4);color:#f4a0a0;}
+    .loading{display:flex;flex-direction:column;align-items:center;padding:32px;gap:12px;}
+    .spinner{width:30px;height:30px;border:3px solid #d0e8cc;border-top-color:#3a6b34;border-radius:50%;animation:spin 0.8s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .del-btn{background:none;border:none;cursor:pointer;color:#ccc;font-size:15px;padding:4px 6px;border-radius:6px;transition:all 0.15s;}
+    .del-btn:hover{background:#fdeaea;color:#c0402a;}
+    .fav-btn{background:none;border:none;cursor:pointer;font-size:15px;padding:4px 6px;border-radius:6px;transition:all 0.15s;color:#ccc;}
+    .fav-btn.active{color:#f5a623;}
+    .fav-btn:hover{background:#fff8e1;}
+    .water-btn{width:28px;height:28px;border-radius:50%;border:2px solid #c8e4c4;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all 0.15s;flex-shrink:0;}
+    .water-btn.filled{background:#a8d5a2;border-color:#5a8a54;}
+    .water-btn:hover{border-color:#5a8a54;}
+    .report-tab{flex:1;padding:8px 4px;text-align:center;font-size:12px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;color:#aaa;background:none;border-top:none;border-left:none;border-right:none;font-family:'DM Sans',sans-serif;transition:all 0.2s;}
+    .report-tab.active{color:#3a6b34;border-bottom-color:#3a6b34;font-weight:700;}
+    .fav-card{background:#fff;border-radius:14px;padding:14px;border:1px solid #f0f0f0;display:flex;align-items:center;gap:12px;margin-bottom:10px;box-shadow:0 2px 6px rgba(0,0,0,0.03);}
+    .pattern-warn{background:#fff8e1;border-left:4px solid #ffe082;border-radius:10px;padding:11px 14px;font-size:13px;margin-bottom:8px;display:flex;gap:8px;color:#795548;line-height:1.5;}
+    .pattern-ok{background:#edf8ea;border-left:4px solid #a3d99a;border-radius:10px;padding:11px 14px;font-size:13px;margin-bottom:8px;display:flex;gap:8px;color:#2d6b27;line-height:1.5;}
+    .pattern-red{background:#fdeaea;border-left:4px solid #f5a0a0;border-radius:10px;padding:11px 14px;font-size:13px;margin-bottom:8px;display:flex;gap:8px;color:#8a2020;line-height:1.5;}
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+    const {
+      RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer,
+      BarChart, Bar, XAxis, YAxis, Tooltip, Cell, PieChart, Pie
+    } = Recharts;
+
+    /* ─── STORAGE ─── */
+    const USERS_KEY = "fl_users";
+    const SESSION_KEY = "fl_session";
+    const MEALS_KEY = uid => `fl_meals_${uid}`;
+    const WATER_KEY = uid => `fl_water_${uid}_${new Date().toDateString()}`;
+    const getUsers = () => { try { return JSON.parse(localStorage.getItem(USERS_KEY) || "{}"); } catch { return {}; } };
+    const saveUsers = u => localStorage.setItem(USERS_KEY, JSON.stringify(u));
+    const getSession = () => { try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch { return null; } };
+    const saveSession = s => localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+    const clearSession = () => localStorage.removeItem(SESSION_KEY);
+    const getMeals = uid => { try { return JSON.parse(localStorage.getItem(MEALS_KEY(uid)) || "[]"); } catch { return []; } };
+    const saveMeals = (uid, m) => localStorage.setItem(MEALS_KEY(uid), JSON.stringify(m));
+    const getWater = uid => { try { return parseInt(localStorage.getItem(WATER_KEY(uid)) || "0"); } catch { return 0; } };
+    const saveWater = (uid, v) => localStorage.setItem(WATER_KEY(uid), String(v));
+    const FAV_KEY = uid => `fl_favs_${uid}`;
+    const getFavs = uid => { try { return JSON.parse(localStorage.getItem(FAV_KEY(uid)) || "[]"); } catch { return []; } };
+    const saveFavs = (uid, f) => localStorage.setItem(FAV_KEY(uid), JSON.stringify(f));
+
+    /* ─── CONSTANTS ─── */
+    const TODAY = new Date().toDateString();
+    const GOAL_MAP = { weight: "체중 감량", muscle: "근육 증가", health: "건강 유지", overseas: "해외 음식 적응" };
+    const GOAL_KCAL = { weight: 1600, muscle: 2500, health: 2000, overseas: 2000 };
+    const CONDITIONS = ["당뇨", "고혈압", "고지혈증"];
+    const ALLERGIES = ["견과류", "유제품", "갑각류", "밀/글루텐", "달걀", "대두"];
+    const ALERT_RULES = {
+      "고혈압": { key: "sodium", limit: 800, msg: "나트륨 섭취가 높아요! 다음 식사는 싱겁게 드세요." },
+      "당뇨": { key: "carbs", limit: 70, msg: "당질 섭취가 감지됐어요. 채소를 먼저 드시는 건 어떨까요?" },
+      "고지혈증": { key: "fat", limit: 20, msg: "포화지방이 높습니다. 불포화 지방(견과류)으로 대체해보세요." }
+    };
+    const RADAR_DATA = (totals) => [
+      { s: "단백질", v: Math.min(100, Math.round((totals.protein / 60) * 100)) },
+      { s: "탄수화물", v: Math.min(100, Math.round((totals.carbs / 300) * 100)) },
+      { s: "지방", v: Math.min(100, Math.round((totals.fat / 65) * 100)) },
+      { s: "식이섬유", v: Math.min(100, Math.round((totals.carbs * 0.1 / 25) * 100)) },
+      { s: "나트륨", v: Math.min(100, Math.round((totals.sodium / 2000) * 100)) },
+    ];
+    const DIET_KNOWLEDGE = "[당뇨 식단] 피해야 할 음식: 케이크,초콜릿,사탕,잼,꿀,콜라,사이다,가당주스,흰쌀밥,흰밀가루,빵,국수,라면,삼겹살,갈비,닭껍질,튀김,소시지,버터,말린과일,바나나,파인애플,망고,수박,믹스커피. 권장 음식: 현미밥,귀리죽,보리밥,콩밥,통밀빵,시금치나물,브로콜리무침,케일샐러드,양배추쌈,오이무침,미역국,두부조림,두부된장국,고등어구이,연어스테이크,닭가슴살구이,삶은계란,아보카도,호두,아몬드. 권장 차: 뽕잎차,녹차,계피차,여주차,생강차,돼지감자차,우엉차. 식사순서: 채소->단백질->탄수화물. [고혈압 식단] 피해야 할 음식: 라면,김치찌개,젓갈,장아찌,햄,소시지,베이컨,삼겹살,버터,치즈,알코올. 권장 음식: 바나나,감자,고구마,시금치,아보카도,고등어구이,연어,꽁치조림,귀리죽,보리밥,저지방우유,플레인요거트,올리브오일,마늘,양파볶음,토마토. 나트륨2000mg이하. [고지혈증 식단] 피해야 할 음식: 삼겹살,목살,갈비,닭껍질,베이컨,소시지,햄,버터,치즈,도넛,크루아상,라면,케이크,마가린,과자류,흰쌀밥,탄산음료,믹스커피,간,곱창,명란,술,튀김. 권장 음식: 현미밥,귀리죽,보리밥,통밀빵,콩밥,미역국,다시마무침,김구이,버섯볶음,양파무침,브로콜리,고등어구이,연어스테이크,꽁치조림,닭가슴살,두부조림,순두부찌개,호두,아몬드,땅콩,올리브오일,들기름. 권장 차: 녹차,보이차,산사차,당귀차,양파껍질차. 찌거나삶기,비계제거,식이섬유25g이상";
+
+    /* ─── MANUAL MEAL MODAL ─── */
+    function ManualMealModal({ onClose, onSave }) {
+      const now = new Date();
+      const [step, setStep] = useState("input");
+      const [foodText, setFoodText] = useState("");
+      const [time, setTime] = useState(String(now.getHours()).padStart(2,"0") + ":" + String(now.getMinutes()).padStart(2,"0"));
+      const [estimated, setEstimated] = useState(null);
+      const [error, setError] = useState("");
+
+      const estimate = async () => {
+        if (!foodText.trim()) return setError("먹은 음식을 입력해주세요.");
+        setError(""); setStep("estimating");
+        try {
+          const prompt = "다음 식사의 영양 정보를 추정해서 JSON만 출력해. 다른 텍스트 없이 JSON만. 식사: " + foodText.trim()
+            + ' {"name":"대표 음식명","emoji":"음식 이모지 1개","kcal":숫자,"protein":숫자,"carbs":숫자,"fat":숫자,"sodium":숫자,"ingredients":["재료1","재료2"],"note":"추정 근거 한 줄"}';
+          const res = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 400, messages: [{ role: "user", content: prompt }] })
+          });
+          if (!res.ok) throw new Error("API " + res.status);
+          const data = await res.json();
+          const raw = data.content?.[0]?.text || "";
+          const s = raw.indexOf("{"), e2 = raw.lastIndexOf("}");
+          if (s === -1 || e2 === -1) throw new Error("파싱 실패");
+          setEstimated(JSON.parse(raw.slice(s, e2 + 1)));
+          setStep("confirm");
+        } catch (e) { setError("추정 실패: " + e.message); setStep("input"); }
+      };
+
+      const handleSave = () => {
+        if (!estimated) return;
+        onSave({ id: Date.now(), name: estimated.name || foodText.trim(), emoji: estimated.emoji || "🍽️", time, date: TODAY,
+          kcal: Number(estimated.kcal)||0, protein: Number(estimated.protein)||0, carbs: Number(estimated.carbs)||0,
+          fat: Number(estimated.fat)||0, sodium: Number(estimated.sodium)||0, ingredients: estimated.ingredients||[], isEstimated: true });
+        onClose();
+      };
+
+      return (
+        <div className="modal-overlay" onClick={onClose}>
+          <div className="modal" style={{ maxWidth: 440 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-av" style={{ fontSize: 22 }}>{step === "confirm" && estimated ? estimated.emoji : "✏️"}</div>
+              <div style={{ flex: 1 }}>
+                <div className="modal-name">{step === "input" ? "식사 등록" : step === "estimating" ? "AI 추정 중..." : "영양 정보 확인"}</div>
+                <div className="modal-email">{step === "input" ? "먹은 음식과 시간만 입력하면 AI가 나머지를 채워드려요" : step === "estimating" ? "잠시만 기다려주세요" : "AI 추정값 · 실제와 다소 다를 수 있어요"}</div>
+              </div>
+              <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#8aad86", fontSize: 22 }}>×</button>
+            </div>
+            <div className="modal-body">
+              {step === "input" && (
+                <>
+                  <div className="form-group">
+                    <label className="form-label">무엇을 드셨나요? *</label>
+                    <textarea className="form-input" placeholder={"예: 된장찌개 한 그릇이랑 밥\n예: 편의점 삼각김밥 2개랑 컵라면"} value={foodText} onChange={e => setFoodText(e.target.value)} rows={3} style={{ resize: "none", lineHeight: 1.6 }} />
+                    <div style={{ fontSize: 11, color: "#9ab096", marginTop: 5 }}>자연스럽게 적어주세요. AI가 칼로리를 추정해드려요.</div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">식사 시간</label>
+                    <input className="form-input" type="time" value={time} onChange={e => setTime(e.target.value)} />
+                  </div>
+                  {error && <div className="error-msg">⚠ {error}</div>}
+                </>
+              )}
+              {step === "estimating" && (
+                <div style={{ textAlign: "center", padding: "32px 0" }}>
+                  <div className="spinner" style={{ margin: "0 auto 16px" }} />
+                  <div style={{ fontSize: 14, color: "#5a7a56", marginBottom: 6 }}>AI가 영양 정보를 추정하고 있어요</div>
+                  <div style={{ fontSize: 12, color: "#9ab096" }}>"{foodText.trim()}"</div>
+                </div>
+              )}
+              {step === "confirm" && estimated && (
+                <>
+                  <div style={{ background: "#f4f9f3", border: "1px solid #c8e4c4", borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: "#1c2b1e", marginBottom: 3 }}>{estimated.emoji} {estimated.name}</div>
+                    <div style={{ fontSize: 12, color: "#7a9076" }}>"{foodText.trim()}"으로 입력하셨어요</div>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 14 }}>
+                    {[
+                      { label: "칼로리", val: estimated.kcal, unit: "kcal", color: "#3a6b34" },
+                      { label: "단백질", val: estimated.protein, unit: "g", color: "#4a7a7a" },
+                      { label: "탄수화물", val: estimated.carbs, unit: "g", color: "#8a6a30" },
+                      { label: "지방", val: estimated.fat, unit: "g", color: "#7a5a8a" },
+                      { label: "나트륨", val: estimated.sodium, unit: "mg", color: estimated.sodium > 800 ? "#c0402a" : "#3a6b34" },
+                    ].map(n => (
+                      <div key={n.label} style={{ background: "#fff", border: "1px solid #eee", borderRadius: 10, padding: "10px 8px", textAlign: "center" }}>
+                        <div style={{ fontSize: 11, color: "#7a9076", marginBottom: 2 }}>{n.label}</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: n.color }}>{n.val}</div>
+                        <div style={{ fontSize: 10, color: "#9ab096" }}>{n.unit}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {(estimated.ingredients || []).length > 0 && (
+                    <div style={{ marginBottom: 10 }}>
+                      <div style={{ fontSize: 11, color: "#7a9076", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.4px", marginBottom: 5 }}>추정 재료</div>
+                      {estimated.ingredients.map((ing, i) => <span key={i} className="tag tag-green">{ing}</span>)}
+                    </div>
+                  )}
+                  {estimated.note && <div className="alert alert-ok"><span>💬</span><span style={{ fontSize: 12 }}>{estimated.note}</span></div>}
+                  <div style={{ fontSize: 11, color: "#b0b8ad", marginTop: 8, textAlign: "center" }}>※ AI 추정값으로 실제 수치와 차이가 있을 수 있어요</div>
+                </>
+              )}
+            </div>
+            <div className="modal-footer">
+              {step === "input" && <><button className="btn btn-ghost btn-sm" onClick={onClose}>취소</button><button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={estimate}>AI로 칼로리 추정하기 →</button></>}
+              {step === "confirm" && <><button className="btn btn-outline btn-sm" onClick={() => { setStep("input"); setEstimated(null); }}>다시 입력</button><button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={handleSave}>이대로 등록</button></>}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ─── PROFILE MODAL ─── */
+    function ProfileModal({ user, pf, initials, onClose, onSave }) {
+      const [mode, setMode] = useState("view");
+      const [draft, setDraft] = useState({ ...pf });
+      const [saved, setSaved] = useState(false);
+      const set = (k, v) => setDraft(d => ({ ...d, [k]: v }));
+      const toggle = (k, v) => setDraft(d => ({ ...d, [k]: d[k]?.includes(v) ? d[k].filter(x => x !== v) : [...(d[k] || []), v] }));
+      const bmi = draft.height && draft.weight ? (draft.weight / ((draft.height / 100) ** 2)).toFixed(1) : null;
+      const bmiLabel = bmi ? (bmi < 18.5 ? "저체중" : bmi < 23 ? "정상" : bmi < 25 ? "과체중" : "비만") : null;
+      const bmiColor = bmi ? (bmi < 18.5 ? "#4a7a7a" : bmi < 23 ? "#2d6b27" : bmi < 25 ? "#8a6a00" : "#c0402a") : null;
+      const handleSave = () => {
+        const updated = { ...draft, targetKcal: GOAL_KCAL[draft.goal] || 2000 };
+        onSave(updated); setSaved(true);
+        setTimeout(() => { setSaved(false); setMode("view"); }, 1200);
+      };
+
+      return (
+        <div className="modal-overlay" onClick={onClose}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-av">{draft.name?.[0]?.toUpperCase() || initials}</div>
+              <div style={{ flex: 1 }}>
+                <div className="modal-name">{draft.name || pf.name}</div>
+                <div className="modal-email">{user.email}</div>
+              </div>
+              <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#8aad86", fontSize: 22 }}>×</button>
+            </div>
+            <div style={{ padding: "14px 20px 0" }}>
+              <div className="modal-tabs">
+                <button className={`modal-tab ${mode === "view" ? "active" : ""}`} onClick={() => { setMode("view"); setDraft({ ...pf }); }}>내 프로필</button>
+                <button className={`modal-tab ${mode === "edit" ? "active" : ""}`} onClick={() => setMode("edit")}>정보 수정</button>
+              </div>
+            </div>
+            {mode === "view" && (
+              <div className="modal-body">
+                {[
+                  { key: "나이", val: pf.age ? pf.age + "세" : "-" },
+                  { key: "성별", val: pf.gender || "-" },
+                  { key: "키 / 체중", val: pf.height && pf.weight ? pf.height + "cm / " + pf.weight + "kg" : "-" },
+                  { key: "BMI", val: bmi ? <span style={{ color: bmiColor, fontWeight: 700 }}>{bmi} <span style={{ fontSize: 11, fontWeight: 400 }}>({bmiLabel})</span></span> : "-" },
+                  { key: "건강 목표", val: GOAL_MAP[pf.goal] || "-" },
+                  { key: "목표 칼로리", val: pf.targetKcal ? pf.targetKcal + " kcal / 일" : "-" },
+                  { key: "지병", val: pf.conditions?.length ? pf.conditions.join(", ") : "없음" },
+                  { key: "알레르기", val: pf.allergies?.length ? pf.allergies.join(", ") : "없음" },
+                ].map(({ key, val }) => (
+                  <div key={key} className="pf-row"><span className="pf-key">{key}</span><span className="pf-val">{val}</span></div>
+                ))}
+              </div>
+            )}
+            {mode === "edit" && (
+              <div className="modal-body">
+                <div className="modal-scroll">
+                  <div className="edit-section">기본 정보</div>
+                  <div className="form-group"><label className="form-label">이름</label><input className="form-input" value={draft.name || ""} onChange={e => set("name", e.target.value)} /></div>
+                  <div className="form-row">
+                    <div className="form-group"><label className="form-label">나이</label><input className="form-input" type="number" value={draft.age || ""} onChange={e => set("age", e.target.value)} /></div>
+                    <div className="form-group"><label className="form-label">성별</label><div className="chip-group">{["남성","여성","기타"].map(g => <button key={g} className={`chip ${draft.gender === g ? "selected" : ""}`} onClick={() => set("gender", g)}>{g}</button>)}</div></div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group"><label className="form-label">키 (cm)</label><input className="form-input" type="number" value={draft.height || ""} onChange={e => set("height", e.target.value)} /></div>
+                    <div className="form-group"><label className="form-label">체중 (kg)</label><input className="form-input" type="number" value={draft.weight || ""} onChange={e => set("weight", e.target.value)} /></div>
+                  </div>
+                  <div className="edit-section">건강 목표</div>
+                  {[{val:"weight",label:"⚖️  체중 감량",desc:"1,600 kcal"},{val:"muscle",label:"💪  근육 증가",desc:"2,500 kcal"},{val:"health",label:"🌿  건강 유지",desc:"2,000 kcal"},{val:"overseas",label:"🌍  해외 음식 적응",desc:"재료·알레르기 중심"}].map(g => (
+                    <button key={g.val} className={`goal-btn ${draft.goal === g.val ? "selected" : ""}`} onClick={() => set("goal", g.val)}>
+                      <div className="goal-label">{g.label}</div><div className="goal-desc">{g.desc}</div>
+                    </button>
+                  ))}
+                  <div className="edit-section">건강 상태</div>
+                  <div className="form-group"><label className="form-label">지병</label><div className="chip-group">{CONDITIONS.map(c => <button key={c} className={`chip ${draft.conditions?.includes(c) ? "selected" : ""}`} onClick={() => toggle("conditions", c)}>{c}</button>)}</div></div>
+                  <div className="form-group"><label className="form-label">알레르기</label><div className="chip-group">{ALLERGIES.map(a => <button key={a} className={`chip ${draft.allergies?.includes(a) ? "selected" : ""}`} onClick={() => toggle("allergies", a)}>{a}</button>)}</div></div>
+                </div>
+              </div>
+            )}
+            <div className="modal-footer">
+              {mode === "view" ? <button className="btn btn-outline btn-block btn-sm" onClick={onClose}>닫기</button>
+                : <><button className="btn btn-ghost btn-sm" onClick={() => { setDraft({ ...pf }); setMode("view"); }}>취소</button><button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={handleSave}>{saved ? "✓ 저장됨" : "저장하기"}</button></>}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ─── AUTH SCREEN ─── */
+    function AuthScreen({ onLogin, onSignup }) {
+      const [tab, setTab] = useState("login");
+      const [email, setEmail] = useState("");
+      const [pw, setPw] = useState("");
+      const [pw2, setPw2] = useState("");
+      const [error, setError] = useState("");
+      const [remember, setRemember] = useState(true);
+
+      const login = () => {
+        const users = getUsers();
+        const user = Object.values(users).find(u => u.email === email);
+        if (!user) return setError("이메일이 존재하지 않아요.");
+        if (user.password !== pw) return setError("비밀번호가 틀렸어요.");
+        setError(""); onLogin(user, remember);
+      };
+      const signup = () => {
+        if (!email || !pw) return setError("이메일과 비밀번호를 입력해주세요.");
+        if (pw !== pw2) return setError("비밀번호가 일치하지 않아요.");
+        if (pw.length < 6) return setError("비밀번호는 6자 이상이어야 해요.");
+        const users = getUsers();
+        if (Object.values(users).find(u => u.email === email)) return setError("이미 사용 중인 이메일이에요.");
+        const uid = "u_" + Date.now();
+        const newUser = { uid, email, password: pw, profile: null };
+        users[uid] = newUser; saveUsers(users);
+        setError(""); onSignup(newUser);
+      };
+
+      return (
+        <div className="auth-wrap">
+          <div className="auth-card">
+            <div className="auth-logo">Food<span>Lens</span></div>
+            <div className="auth-sub">AI 기반 음식 분석 · 개인 맞춤 식단 추천</div>
+            <div className="auth-tabs">
+              <button className={`auth-tab ${tab === "login" ? "active" : ""}`} onClick={() => { setTab("login"); setError(""); }}>로그인</button>
+              <button className={`auth-tab ${tab === "signup" ? "active" : ""}`} onClick={() => { setTab("signup"); setError(""); }}>회원가입</button>
+            </div>
+            <div className="form-group"><label className="form-label">이메일</label><input className="form-input" type="email" placeholder="example@email.com" value={email} onChange={e => setEmail(e.target.value)} /></div>
+            <div className="form-group"><label className="form-label">비밀번호</label><input className="form-input" type="password" placeholder="6자 이상" value={pw} onChange={e => setPw(e.target.value)} /></div>
+            {tab === "signup" && <div className="form-group"><label className="form-label">비밀번호 확인</label><input className="form-input" type="password" placeholder="비밀번호 재입력" value={pw2} onChange={e => setPw2(e.target.value)} /></div>}
+            {tab === "login" && (
+              <label style={{ display:"flex", alignItems:"center", gap:8, fontSize:13, color:"#5a7a56", cursor:"pointer", marginBottom:4 }}>
+                <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} style={{ width:15, height:15, accentColor:"#3a6b34" }} />
+                로그인 상태 유지
+              </label>
+            )}
+            {error && <div className="error-msg">⚠ {error}</div>}
+            <button className="btn btn-primary btn-block" style={{ marginTop: 16 }} onClick={tab === "login" ? login : signup}>{tab === "login" ? "로그인" : "회원가입하기"}</button>
+            <div className="divider">또는</div>
+            <div style={{ fontSize: 12, color: "#9ab096", textAlign: "center" }}>
+              {tab === "login" ? "계정이 없으신가요? " : "이미 계정이 있으신가요? "}
+              <span style={{ color: "#3a6b34", fontWeight: 600, cursor: "pointer" }} onClick={() => { setTab(tab === "login" ? "signup" : "login"); setError(""); }}>{tab === "login" ? "회원가입" : "로그인"}</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ─── ONBOARDING ─── */
+    function Onboarding({ user, onComplete }) {
+      const [step, setStep] = useState(0);
+      const [pf, setPf] = useState({ name: "", age: "", gender: "", height: "", weight: "", goal: "", conditions: [], allergies: [] });
+      const [error, setError] = useState("");
+      const set = (k, v) => setPf(p => ({ ...p, [k]: v }));
+      const toggle = (k, v) => setPf(p => ({ ...p, [k]: p[k].includes(v) ? p[k].filter(x => x !== v) : [...p[k], v] }));
+      const next = () => {
+        if (step === 0) { if (!pf.name.trim()) return setError("이름을 입력해주세요."); if (!pf.age || isNaN(pf.age)) return setError("나이를 올바르게 입력해주세요."); if (!pf.gender) return setError("성별을 선택해주세요."); }
+        if (step === 1 && !pf.goal) return setError("목표를 선택해주세요.");
+        setError(""); setStep(s => s + 1);
+      };
+      const finish = () => {
+        const users = getUsers();
+        const full = { ...pf, targetKcal: GOAL_KCAL[pf.goal] || 2000 };
+        users[user.uid] = { ...users[user.uid], profile: full };
+        saveUsers(users); saveMeals(user.uid, []);
+        onComplete({ ...user, profile: full });
+      };
+      return (
+        <div className="ob-wrap">
+          <div className="ob-card">
+            <div className="ob-step-bar">{["기본 정보","건강 목표","건강 상태"].map((_,i) => <div key={i} className={`ob-dot ${i < step ? "done" : i === step ? "active" : ""}`} />)}</div>
+            {step === 0 && <>
+              <div className="ob-title">안녕하세요! 👋</div>
+              <div className="ob-desc">기본 정보를 입력해주세요.</div>
+              <div className="form-group"><label className="form-label">이름 (닉네임)</label><input className="form-input" placeholder="홍길동" value={pf.name} onChange={e => set("name", e.target.value)} /></div>
+              <div className="form-row">
+                <div className="form-group"><label className="form-label">나이</label><input className="form-input" type="number" placeholder="25" value={pf.age} onChange={e => set("age", e.target.value)} /></div>
+                <div className="form-group"><label className="form-label">성별</label><div className="chip-group">{["남성","여성","기타"].map(g => <button key={g} className={`chip ${pf.gender === g ? "selected" : ""}`} onClick={() => set("gender", g)}>{g}</button>)}</div></div>
+              </div>
+              <div className="form-row">
+                <div className="form-group"><label className="form-label">키 (cm)</label><input className="form-input" type="number" placeholder="170" value={pf.height} onChange={e => set("height", e.target.value)} /></div>
+                <div className="form-group"><label className="form-label">체중 (kg)</label><input className="form-input" type="number" placeholder="65" value={pf.weight} onChange={e => set("weight", e.target.value)} /></div>
+              </div>
+            </>}
+            {step === 1 && <>
+              <div className="ob-title">어떤 목표가 있으신가요?</div>
+              <div className="ob-desc">목표에 따라 권장 칼로리와 영양 비율이 달라져요.</div>
+              {[{val:"weight",label:"⚖️  체중 감량",desc:"칼로리 제한 · 고단백 · 목표 1,600 kcal"},{val:"muscle",label:"💪  근육 증가",desc:"고단백 · 충분한 탄수화물 · 목표 2,500 kcal"},{val:"health",label:"🌿  건강 유지",desc:"균형 잡힌 영양 관리 · 목표 2,000 kcal"},{val:"overseas",label:"🌍  해외 음식 적응",desc:"재료 정보 · 알레르기 확인 중심"}].map(g => (
+                <button key={g.val} className={`goal-btn ${pf.goal === g.val ? "selected" : ""}`} onClick={() => set("goal", g.val)}>
+                  <div className="goal-label">{g.label}</div><div className="goal-desc">{g.desc}</div>
+                </button>
+              ))}
+            </>}
+            {step === 2 && <>
+              <div className="ob-title">건강 상태를 알려주세요</div>
+              <div className="ob-desc">해당 항목을 선택하면 맞춤 식단이 제공돼요.</div>
+              <div className="form-group"><label className="form-label">지병 / 건강 상태</label><div className="chip-group">{CONDITIONS.map(c => <button key={c} className={`chip ${pf.conditions.includes(c) ? "selected" : ""}`} onClick={() => toggle("conditions", c)}>{c}</button>)}</div></div>
+              <div className="form-group"><label className="form-label">알레르기 (복수 선택)</label><div className="chip-group">{ALLERGIES.map(a => <button key={a} className={`chip ${pf.allergies.includes(a) ? "selected" : ""}`} onClick={() => toggle("allergies", a)}>{a}</button>)}</div></div>
+            </>}
+            {error && <div className="error-msg" style={{ marginTop: 8 }}>⚠ {error}</div>}
+            <div className="btn-row">
+              {step > 0 && <button className="btn-ghost" onClick={() => { setStep(s => s - 1); setError(""); }}>← 이전</button>}
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={step < 2 ? next : finish}>{step < 2 ? "다음 →" : "🎉 시작하기"}</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ─── MAIN APP ─── */
+    function App() {
+      const [authState, setAuthState] = useState("loading");
+      const [user, setUser] = useState(null);
+      const [view, setView] = useState("dash");
+      const [meals, setMeals] = useState([]);
+      const [water, setWaterState] = useState(0);
+      const [showAdd, setShowAdd] = useState(false);
+      const [showProfile, setShowProfile] = useState(false);
+      const [imgFile, setImgFile] = useState(null);
+      const [imgPreview, setImgPreview] = useState(null);
+      const [analyzeResult, setAnalyzeResult] = useState(null);
+      const [analyzeLoading, setAnalyzeLoading] = useState(false);
+      const [reco, setReco] = useState(null);
+      const [recoLoading, setRecoLoading] = useState(false);
+      const [favs, setFavs] = useState([]);
+      const [reportPeriod, setReportPeriod] = useState("week");
+      const [showFavs, setShowFavs] = useState(false);
+      const fileRef = useRef();
+
+      useEffect(() => {
+        let s = getSession();
+        if (!s) { try { s = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null"); } catch {} }
+        if (s) {
+          const u = getUsers()[s.uid];
+          if (u) { setUser(u); setMeals(getMeals(u.uid)); setWaterState(getWater(u.uid)); setFavs(getFavs(u.uid)); setAuthState(u.profile ? "app" : "onboard"); }
+          else setAuthState("auth");
+        } else setAuthState("auth");
+      }, []);
+
+      const login = (u, remember = true) => {
+        if (remember) { saveSession({ uid: u.uid, remember: true }); }
+        else { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify({ uid: u.uid })); } catch {} }
+        setUser(u); setMeals(getMeals(u.uid)); setWaterState(getWater(u.uid)); setFavs(getFavs(u.uid)); setAuthState(u.profile ? "app" : "onboard");
+      };
+      const signup = u => { saveSession({ uid: u.uid, remember: true }); setUser(u); setAuthState("onboard"); };
+      const onboardDone = u => { setUser(u); setMeals(getMeals(u.uid)); setWaterState(getWater(u.uid)); setFavs(getFavs(u.uid)); setAuthState("app"); };
+      const logout = () => { clearSession(); setUser(null); setMeals([]); setAuthState("auth"); setView("dash"); };
+      const handleProfileSave = updated => {
+        const users = getUsers();
+        const updatedUser = { ...user, profile: updated };
+        users[user.uid] = updatedUser; saveUsers(users); setUser(updatedUser);
+      };
+      const setWater = v => { setWaterState(v); if (user) saveWater(user.uid, v); };
+      const addMeal = m => { const updated = [m, ...meals]; setMeals(updated); if (user) saveMeals(user.uid, updated); };
+      const deleteMeal = id => { const updated = meals.filter(x => x.id !== id); setMeals(updated); if (user) saveMeals(user.uid, updated); };
+      const toggleFav = (meal) => {
+        const exists = favs.find(f => f.name === meal.name);
+        const updated = exists ? favs.filter(f => f.name !== meal.name) : [{ name: meal.name, emoji: meal.emoji || "🍽️", kcal: meal.kcal, protein: meal.protein, carbs: meal.carbs, fat: meal.fat, sodium: meal.sodium, ingredients: meal.ingredients || [] }, ...favs];
+        setFavs(updated); if (user) saveFavs(user.uid, updated);
+      };
+      const addFavMeal = (fav) => {
+        addMeal({ ...fav, id: Date.now(), time: new Date().toTimeString().slice(0,5), date: TODAY, isEstimated: false });
+        setShowFavs(false);
+      };
+
+      const pf = user?.profile || {};
+      const targetKcal = pf.targetKcal || 2000;
+      const todayMeals = meals.filter(m => m.date === TODAY);
+      const totals = todayMeals.reduce((a, m) => ({ kcal: a.kcal+m.kcal, protein: a.protein+m.protein, carbs: a.carbs+m.carbs, fat: a.fat+m.fat, sodium: a.sodium+m.sodium }), { kcal:0, protein:0, carbs:0, fat:0, sodium:0 });
+      const kcalPct = Math.min(100, Math.round((totals.kcal / targetKcal) * 100));
+      const initials = pf.name?.[0]?.toUpperCase() || "U";
+
+      const weekData = [...Array(7)].map((_, i) => {
+        const d = new Date(); d.setDate(d.getDate() - (6 - i));
+        const dayMeals = meals.filter(m => m.date === d.toDateString());
+        return { name: ["일","월","화","수","목","금","토"][d.getDay()], kcal: dayMeals.reduce((s,m) => s+m.kcal, 0) };
+      });
+      const pieData = [
+        { name: "탄수화물", value: totals.carbs, fill: "#8884d8" },
+        { name: "단백질", value: totals.protein, fill: "#82ca9d" },
+        { name: "지방", value: totals.fat, fill: "#ffc658" },
+      ];
+
+      const handleFile = f => {
+        if (!f) return; setImgFile(f); setAnalyzeResult(null);
+        const r = new FileReader(); r.onload = e => setImgPreview(e.target.result); r.readAsDataURL(f);
+      };
+      const analyze = async () => {
+        if (!imgFile) return; setAnalyzeLoading(true);
+        try {
+          const base64 = imgPreview.split(",")[1];
+          const allergyNote = pf.allergies?.length ? "사용자 알레르기: " + pf.allergies.join(", ") : "";
+          const res = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ model: "claude-sonnet-4-5-20251016", max_tokens: 1000,
+              messages: [{ role: "user", content: [
+                { type: "image", source: { type: "base64", media_type: imgFile.type || "image/jpeg", data: base64 } },
+                { type: "text", text: '이 음식을 분석해서 JSON만 출력해. ' + allergyNote + '\n{"name":"음식명","ingredients":["재료"],"calories":숫자,"protein":숫자,"carbs":숫자,"fat":숫자,"sodium":숫자,"healthScore":숫자,"allergyWarning":null또는"경고문구","comment":"코멘트"}' }
+              ]}]
+            })
+          });
+          if (!res.ok) throw new Error("API " + res.status);
+          const data = await res.json();
+          const raw = data.content?.[0]?.text || "";
+          const s = raw.indexOf("{"), e2 = raw.lastIndexOf("}");
+          setAnalyzeResult(s !== -1 && e2 !== -1 ? JSON.parse(raw.slice(s, e2+1)) : null);
+        } catch { setAnalyzeResult({ name: "분석 실패", ingredients: [], calories: 0, protein: 0, carbs: 0, fat: 0, sodium: 0, healthScore: 0, comment: "이미지를 다시 시도해주세요." }); }
+        setAnalyzeLoading(false);
+      };
+      const saveAnalysis = () => {
+        if (!analyzeResult) return;
+        addMeal({ id: Date.now(), name: analyzeResult.name, emoji: "🍽️", time: new Date().toTimeString().slice(0,5), date: TODAY,
+          kcal: analyzeResult.calories, protein: analyzeResult.protein, carbs: analyzeResult.carbs, fat: analyzeResult.fat, sodium: analyzeResult.sodium, ingredients: analyzeResult.ingredients });
+        setImgPreview(null); setImgFile(null); setAnalyzeResult(null); setView("dash");
+      };
+
+      const getRecommendations = async () => {
+        setRecoLoading(true); setReco(null);
+        try {
+          const summary = todayMeals.length ? todayMeals.map(m => m.name + "(" + m.kcal + "kcal)").join(", ") : "없음";
+          const cond = pf.conditions?.length ? pf.conditions.join(",") : "없음";
+          const goal = GOAL_MAP[pf.goal] || "건강유지";
+          const condGuide = pf.conditions?.includes("당뇨") ? "당뇨:현미밥,두부,채소,생선권장/흰밥,설탕,정제탄수화물금지" :
+            pf.conditions?.includes("고혈압") ? "고혈압:나트륨2000mg이하,칼륨풍부채소권장/짠음식금지" :
+            pf.conditions?.includes("고지혈증") ? "고지혈증:등푸른생선,견과류,채소권장/포화지방,튀김금지" : "";
+          const prompt = "영양사로서 JSON만 출력해. 사용자:" + (pf.age||"?") + "세 " + goal
+            + (cond !== "없음" ? " 지병:" + cond : "")
+            + (pf.allergies?.length ? " 알레르기:" + pf.allergies.join(",") : "")
+            + " 오늘:" + summary + " " + totals.kcal + "kcal/목표" + targetKcal + "kcal"
+            + (condGuide ? " 지침:" + condGuide : "")
+            + '\n{"analysis":"2문장","recommendations":[{"food":"음식명","reason":"짧은이유","nutrients":"영양소","emoji":"이모지"},{"food":"","reason":"","nutrients":"","emoji":""},{"food":"","reason":"","nutrients":"","emoji":""}],"avoidFoods":["음식1","음식2"],"tips":["팁1"],"warnings":["주의"]}';
+          const res = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ model: "claude-haiku-4-5-20251001", max_tokens: 800, messages: [{ role: "user", content: prompt }] })
+          });
+          if (!res.ok) throw new Error("API " + res.status);
+          const data = await res.json();
+          if (data.error) throw new Error(data.error.message);
+          const raw = data.content?.[0]?.text || "";
+          const s = raw.indexOf("{"), e2 = raw.lastIndexOf("}");
+          if (s === -1 || e2 === -1) throw new Error("응답 형식 오류");
+          setReco(JSON.parse(raw.slice(s, e2+1)));
+        } catch (e) { setReco({ analysis: "오류: " + e.message, recommendations: [], avoidFoods: [], tips: [], warnings: [] }); }
+        setRecoLoading(false);
+      };
+
+      if (authState === "loading") return <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", background:"#1c2b1e" }}><div className="spinner" /></div>;
+      if (authState === "auth") return <AuthScreen onLogin={login} onSignup={signup} />;
+      if (authState === "onboard") return <Onboarding user={user} onComplete={onboardDone} />;
+
+      return (
+        <>
+          {showProfile && <ProfileModal user={user} pf={pf} initials={initials} onClose={() => setShowProfile(false)} onSave={handleProfileSave} />}
+          {showAdd && <ManualMealModal onClose={() => setShowAdd(false)} onSave={m => addMeal(m)} />}
+
+          <div className="screen">
+            <header className="header">
+              <div className="logo">Food<span>Lens</span></div>
+              <div className="header-right">
+                <button className="user-chip" onClick={() => setShowProfile(true)}>
+                  <div className="user-av">{initials}</div>
+                  <span className="user-name">{pf.name}</span>
+                </button>
+                <button className="logout-btn" onClick={logout}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                  로그아웃
+                </button>
+              </div>
+            </header>
+
+            <main className="content">
+              {/* ── DASHBOARD ── */}
+              <div className={`page ${view === "dash" ? "active" : ""}`}>
+                <div className="hero">
+                  <div className="hero-greeting">{new Date().toLocaleDateString("ko-KR", { month:"long", day:"numeric", weekday:"long" })}</div>
+                  <div className="hero-title">오늘 권장량의 {kcalPct}% 섭취했어요</div>
+                  <div className="hero-stats">
+                    <div><div className="hero-num">{totals.kcal}</div><div className="hero-lbl">현재 (kcal)</div></div>
+                    <div style={{ width: 1, background: "rgba(255,255,255,0.15)" }} />
+                    <div><div className="hero-num">{targetKcal}</div><div className="hero-lbl">목표 (kcal)</div></div>
+                    <div style={{ width: 1, background: "rgba(255,255,255,0.15)" }} />
+                    <div><div className="hero-num">{todayMeals.length}끼</div><div className="hero-lbl">식사 기록</div></div>
+                  </div>
+                </div>
+
+                <div className="card">
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                    <div>
+                      <div style={{ fontWeight:700, fontSize:14 }}>💧 수분 섭취</div>
+                      <div style={{ fontSize:12, color:"#888", marginTop:2 }}>오늘 {water * 250}ml / 권장 2,000ml</div>
+                    </div>
+                    <div style={{ fontSize:12, fontWeight:700, color: water >= 8 ? "#3a6b34" : water >= 5 ? "#8a6a00" : "#c0402a" }}>
+                      {water >= 8 ? "✅ 달성!" : water >= 5 ? "절반 이상" : "부족해요"}
+                    </div>
+                  </div>
+                  <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+                    {[...Array(8)].map((_, i) => (
+                      <button key={i} className={"water-btn" + (i < water ? " filled" : "")}
+                        onClick={() => setWater(i < water ? i : i + 1)}>
+                        {i < water ? "💧" : "○"}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display:"flex", justifyContent:"space-between", marginTop:8 }}>
+                    <span style={{ fontSize:11, color:"#aaa" }}>0ml</span>
+                    <span style={{ fontSize:11, color:"#aaa" }}>2,000ml</span>
+                  </div>
+                </div>
+
+                {pf.conditions?.map(c => {
+                  const rule = ALERT_RULES[c];
+                  if (rule && todayMeals.reduce((s,m) => s + (m[rule.key]||0), 0) > rule.limit)
+                    return <div key={c} className="alert alert-warn">⚠️ {rule.msg}</div>;
+                  return null;
+                })}
+
+                <div className="stat-grid">
+                  <div className="stat-card"><div className="stat-num">{totals.kcal}</div><div className="stat-unit">kcal</div><div className="stat-lbl">오늘 섭취</div></div>
+                  <div className="stat-card"><div className="stat-num">{totals.protein}g</div><div className="stat-lbl">단백질</div></div>
+                  <div className="stat-card"><div className="stat-num" style={{ color: Math.round((totals.kcal/targetKcal)*100) >= 100 ? "#c0402a" : "#2d4a2a" }}>{Math.round((totals.kcal/targetKcal)*100)}%</div><div className="stat-lbl">목표 달성</div></div>
+                </div>
+
+                <div className="card">
+                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>오늘의 영양 균형</div>
+                  {[
+                    { label: "칼로리", val: totals.kcal, max: targetKcal, color: "#3a6b34", unit: "kcal" },
+                    { label: "단백질", val: totals.protein, max: pf.goal === "muscle" ? 80 : 60, color: "#4a7a7a", unit: "g" },
+                    { label: "나트륨", val: totals.sodium, max: 2000, color: totals.sodium > 1800 ? "#c0402a" : "#8a6a30", unit: "mg" },
+                  ].map(n => (
+                    <div key={n.label} className="nut-row">
+                      <span className="nut-label">{n.label}</span>
+                      <div className="nut-track"><div className="nut-fill" style={{ width: Math.min(100,(n.val/n.max)*100) + "%", background: n.color }} /></div>
+                      <span className="nut-val">{n.val}{n.unit}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="card">
+                  <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>영양 성분 비율</div>
+                  <div style={{ display: "flex", alignItems: "center" }}>
+                    <div style={{ width: "45%", height: 140 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart><Pie data={pieData.filter(p => p.value > 0)} innerRadius={35} outerRadius={55} paddingAngle={4} dataKey="value" /></PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div style={{ flex: 1, fontSize: 13 }}>
+                      {pieData.map(p => (
+                        <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                          <div style={{ width: 10, height: 10, borderRadius: 2, background: p.fill, flexShrink: 0 }} />
+                          <span style={{ color: "#666" }}>{p.name}</span>
+                          <strong style={{ marginLeft: "auto" }}>{p.value}g</strong>
+                        </div>
+                      ))}
+                      <div style={{ fontSize: 11, color: "#aaa", marginTop: 4 }}>나트륨 {totals.sodium}mg</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="section-title">
+                  오늘의 식사
+                  <div style={{ display:"flex", gap:5 }}>
+                    {favs.length > 0 && <button className="btn btn-outline btn-sm" style={{ padding:"5px 10px", fontSize:11 }} onClick={() => setShowFavs(true)}>★ 즐겨찾기</button>}
+                    <button className="btn btn-outline btn-sm" style={{ padding:"5px 10px", fontSize:11 }} onClick={() => setShowAdd(true)}>+ 등록</button>
+                    <button className="btn btn-outline btn-sm" style={{ padding:"5px 10px", fontSize:11 }} onClick={() => setView("analyze")}>📷</button>
+                  </div>
+                </div>
+                <div className="card">
+                  {todayMeals.length === 0
+                    ? <div style={{ textAlign: "center", padding: "24px 0" }}>
+                        <div style={{ fontSize: 28, marginBottom: 8 }}>🍽️</div>
+                        <div style={{ fontSize: 13, color: "#9ab096", marginBottom: 14 }}>아직 기록된 식사가 없어요</div>
+                        <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                          <button className="btn btn-primary btn-sm" onClick={() => setShowAdd(true)}>직접 등록</button>
+                          <button className="btn btn-outline btn-sm" onClick={() => setView("analyze")}>AI 분석</button>
+                        </div>
+                      </div>
+                    : todayMeals.map(m => (
+                      <div key={m.id} className="meal-item">
+                        <div className="meal-thumb">{m.emoji || "🍽️"}</div>
+                        <div className="meal-info">
+                          <div className="meal-name">{m.name}<span className="meal-time-badge">{m.time}</span></div>
+                          <div className="meal-meta">단백질 {m.protein}g · 탄수화물 {m.carbs}g · 나트륨 {m.sodium}mg{m.isEstimated ? " · AI추정" : ""}</div>
+                        </div>
+                        <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4 }}>
+                          <div><div className="meal-kcal">{m.kcal}</div><div style={{ fontSize:10, color:"#7a9076" }}>kcal</div></div>
+                          <div style={{ display:"flex", gap:2 }}>
+                            <button className={"fav-btn" + (favs.find(f => f.name === m.name) ? " active" : "")} onClick={() => toggleFav(m)}>★</button>
+                            <button className="del-btn" onClick={() => deleteMeal(m.id)}>🗑</button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+
+              {/* ── LOG ── */}
+              <div className={`page ${view === "log" ? "active" : ""}`}>
+                <div style={{ fontFamily:"'Fraunces',serif", fontSize: 20, color:"#1c2b1e", marginBottom:4 }}>식사 기록</div>
+                <div style={{ fontSize:13, color:"#7a9076", marginBottom:18 }}>오늘 섭취한 식사 내역 · 총 {todayMeals.length}끼</div>
+                <div className="stat-grid">
+                  <div className="stat-card"><div className="stat-num">{totals.kcal}</div><div className="stat-unit">kcal</div><div className="stat-lbl">총 칼로리</div></div>
+                  <div className="stat-card"><div className="stat-num">{totals.protein}g</div><div className="stat-lbl">단백질</div></div>
+                  <div className="stat-card"><div className="stat-num" style={{ color: totals.sodium > 2000 ? "#c0402a" : "#2d4a2a" }}>{totals.sodium}mg</div><div className="stat-lbl">나트륨</div></div>
+                </div>
+                <div className="card">
+                  {todayMeals.length === 0
+                    ? <div style={{ textAlign:"center", padding:"24px 0" }}>
+                        <div style={{ fontSize:28, marginBottom:8 }}>🍽️</div>
+                        <div style={{ fontSize:13, color:"#9ab096", marginBottom:14 }}>아직 기록이 없어요</div>
+                        <div style={{ display:"flex", gap:8, justifyContent:"center" }}>
+                          <button className="btn btn-primary btn-sm" onClick={() => setShowAdd(true)}>직접 등록</button>
+                          <button className="btn btn-outline btn-sm" onClick={() => setView("analyze")}>AI 분석</button>
+                        </div>
+                      </div>
+                    : todayMeals.map(m => (
+                      <div key={m.id} className="meal-item">
+                        <div className="meal-thumb">{m.emoji || "🍽️"}</div>
+                        <div className="meal-info">
+                          <div className="meal-name">{m.name}<span className="meal-time-badge">{m.time}</span></div>
+                          <div className="meal-meta">단백질 {m.protein}g · 탄수화물 {m.carbs}g · 나트륨 {m.sodium}mg{m.isEstimated ? " · AI추정" : ""}</div>
+                          <div style={{ marginTop:4 }}>{(m.ingredients||[]).slice(0,5).map((ing,i) => <span key={i} className="tag tag-green" style={{ fontSize:10 }}>{ing}</span>)}</div>
+                        </div>
+                        <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", gap:4 }}>
+                          <div><div className="meal-kcal">{m.kcal}</div><div style={{ fontSize:10, color:"#7a9076" }}>kcal</div></div>
+                          <button className="del-btn" onClick={() => deleteMeal(m.id)}>🗑</button>
+                        </div>
+                      </div>
+                    ))}
+                  <button className="btn btn-outline btn-sm" style={{ width:"100%", marginTop:12 }} onClick={() => setShowAdd(true)}>+ 식사 직접 등록</button>
+                </div>
+                <div className="card">
+                  <div style={{ fontWeight:700, fontSize:14, marginBottom:4 }}>영양 균형 레이더</div>
+                  <div style={{ fontSize:11, color:"#aaa", marginBottom:10 }}>권장 섭취량 대비 %</div>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <RadarChart data={RADAR_DATA(totals)}>
+                      <PolarGrid stroke="#e8ede7" />
+                      <PolarAngleAxis dataKey="s" tick={{ fontSize:11, fill:"#5a7a56" }} />
+                      <Radar dataKey="v" stroke="#3a6b34" fill="#3a6b34" fillOpacity={0.2} strokeWidth={2} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="card">
+                  <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>패턴 분석 요약</div>
+                  {totals.sodium > 1800 && <div className="pattern-warn"><span>⚠️</span><span>나트륨 섭취가 높아요. 오늘 {totals.sodium}mg · 권장량 2,000mg에 근접했어요.</span></div>}
+                  {totals.protein < (pf.goal === "muscle" ? 60 : 40) && <div className="pattern-red"><span>❗</span><span>단백질 섭취 부족 — 현재 {totals.protein}g / 권장 {pf.goal === "muscle" ? 80 : 60}g</span></div>}
+                  {totals.kcal > targetKcal && <div className="pattern-red"><span>❗</span><span>오늘 목표 칼로리를 초과했어요. ({totals.kcal}kcal / 목표 {targetKcal}kcal)</span></div>}
+                  {totals.kcal > 0 && totals.kcal <= targetKcal && totals.protein >= 40 && <div className="pattern-ok"><span>✅</span><span>오늘 영양 관리가 잘 되고 있어요! 목표 {Math.round((totals.kcal/targetKcal)*100)}% 달성 중이에요.</span></div>}
+                  {pf.conditions?.includes("고혈압") && totals.sodium < 800 && <div className="pattern-ok"><span>✅</span><span>나트륨 섭취가 적절해요. 고혈압 관리에 도움이 돼요.</span></div>}
+                  {todayMeals.length === 0 && <div style={{ textAlign:"center", padding:"12px 0", color:"#aaa", fontSize:13 }}>오늘 식사를 기록하면 패턴 분석이 나타나요</div>}
+                </div>
+              </div>
+
+              {/* ── ANALYZE ── */}
+              <div className={`page ${view === "analyze" ? "active" : ""}`}>
+                <div style={{ fontFamily:"'Fraunces',serif", fontSize: 20, color: "#1c2b1e", marginBottom: 4 }}>음식 분석</div>
+                <div style={{ fontSize: 13, color: "#7a9076", marginBottom: 18 }}>사진을 업로드하면 AI가 재료와 영양소를 분석해드려요</div>
+                {pf.allergies?.length > 0 && <div className="alert alert-warn"><span>⚠️</span><span>알레르기 설정: <strong>{pf.allergies.join(", ")}</strong></span></div>}
+                {!imgPreview ? (
+                  <div className="upload-zone" onClick={() => fileRef.current.click()}>
+                    <input ref={fileRef} type="file" accept="image/*" style={{ display:"none" }} onChange={e => handleFile(e.target.files[0])} />
+                    <div style={{ fontSize: 36, marginBottom: 10 }}>📷</div>
+                    <div style={{ fontFamily:"'Fraunces',serif", fontSize: 16, color: "#2d4a2a", marginBottom: 6 }}>음식 사진 업로드</div>
+                    <div style={{ fontSize: 12, color: "#7a9076" }}>클릭하거나 파일을 드래그하세요</div>
+                  </div>
+                ) : (
+                  <div className="card">
+                    <img src={imgPreview} style={{ width:"100%", maxHeight:240, objectFit:"cover", borderRadius:12, marginBottom:14 }} alt="food" />
+                    {!analyzeResult && !analyzeLoading && (
+                      <div style={{ display:"flex", gap:10 }}>
+                        <button className="btn btn-primary" style={{ flex:1 }} onClick={analyze}>AI 분석 시작</button>
+                        <button className="btn btn-outline btn-sm" onClick={() => { setImgPreview(null); setImgFile(null); }}>다시 선택</button>
+                      </div>
+                    )}
+                    {analyzeLoading && <div className="loading"><div className="spinner" /><div style={{ fontSize:13, color:"#5a7a56" }}>AI가 분석 중이에요...</div></div>}
+                    {analyzeResult && (
+                      <div>
+                        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:12 }}>
+                          <div style={{ fontFamily:"'Fraunces',serif", fontSize:18, color:"#1c2b1e" }}>{analyzeResult.name}</div>
+                          <span className="tag tag-green">건강점수 {analyzeResult.healthScore}/10</span>
+                        </div>
+                        {analyzeResult.allergyWarning && <div className="alert alert-red"><span>🚨</span><span>{analyzeResult.allergyWarning}</span></div>}
+                        <div style={{ marginBottom:12 }}>
+                          <div style={{ fontSize:11, color:"#7a9076", marginBottom:5, fontWeight:700, textTransform:"uppercase" }}>인식된 재료</div>
+                          {(analyzeResult.ingredients||[]).map((ing,i) => <span key={i} className="tag tag-green">{ing}</span>)}
+                        </div>
+                        <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8, marginBottom:12 }}>
+                          {[{label:"칼로리",val:`${analyzeResult.calories} kcal`,col:"#3a6b34"},{label:"단백질",val:`${analyzeResult.protein}g`,col:"#4a7a7a"},{label:"탄수화물",val:`${analyzeResult.carbs}g`,col:"#8a6a30"},{label:"지방",val:`${analyzeResult.fat}g`,col:"#7a5a8a"},{label:"나트륨",val:`${analyzeResult.sodium}mg`,col:analyzeResult.sodium>800?"#c0402a":"#3a6b34"}].map(n => (
+                            <div key={n.label} className="card-sm" style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                              <span style={{ fontSize:12, color:"#7a9076" }}>{n.label}</span>
+                              <span style={{ fontSize:13, fontWeight:700, color:n.col }}>{n.val}</span>
+                            </div>
+                          ))}
+                        </div>
+                        {analyzeResult.comment && <div className="alert alert-ok" style={{ marginBottom:12 }}><span>💬</span><span>{analyzeResult.comment}</span></div>}
+                        <div style={{ display:"flex", gap:10 }}>
+                          <button className="btn btn-primary" style={{ flex:1 }} onClick={saveAnalysis}>식사 기록 저장</button>
+                          <button className="btn btn-outline btn-sm" onClick={() => { setImgPreview(null); setImgFile(null); setAnalyzeResult(null); }}>다시 분석</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* ── RECOMMEND ── */}
+              <div className={`page ${view === "rec" ? "active" : ""}`}>
+                <div style={{ fontFamily:"'Fraunces',serif", fontSize: 20, color: "#1c2b1e", marginBottom: 4 }}>AI 개인화 추천</div>
+                <div style={{ fontSize: 13, color: "#7a9076", marginBottom: 18 }}>{pf.name}님의 식단·건강 상태 기반 맞춤 추천</div>
+                <div className="card">
+                  <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>주간 칼로리 섭취</div>
+                  <ResponsiveContainer width="100%" height={150}>
+                    <BarChart data={weekData} barSize={28}>
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize:12, fill:"#888" }} />
+                      <YAxis hide />
+                      <Tooltip formatter={v => [v + " kcal", "칼로리"]} contentStyle={{ borderRadius:10, fontSize:12 }} />
+                      <Bar dataKey="kcal" radius={[6,6,0,0]}>
+                        {weekData.map((_,i) => <Cell key={i} fill={i===6?"#a8d5a2":"#3a6b34"} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                {!reco ? (
+                  <div className="card" style={{ textAlign:"center", padding:28 }}>
+                    <div style={{ fontSize:36, marginBottom:12 }}>🥗</div>
+                    <div style={{ fontFamily:"'Fraunces',serif", fontSize:17, color:"#1c2b1e", marginBottom:8 }}>다음 식사 추천 받기</div>
+                    <div style={{ fontSize:13, color:"#7a9076", marginBottom:18, lineHeight:1.6 }}>
+                      오늘 {totals.kcal}kcal 섭취 · 목표 {targetKcal}kcal<br />
+                      {pf.conditions?.length ? "지병: " + pf.conditions.join(", ") : "목표: " + (GOAL_MAP[pf.goal] || "-")}
+                    </div>
+                    {recoLoading
+                      ? <div className="loading"><div className="spinner" /><div style={{ fontSize:13, color:"#5a7a56" }}>AI가 추천을 생성 중이에요...</div></div>
+                      : <button className="btn btn-primary btn-block" onClick={getRecommendations}>추천 받기</button>}
+                  </div>
+                ) : (
+                  <div>
+                    {reco.analysis && <div className="alert alert-ok" style={{ marginBottom:14 }}><span>📊</span><span>{reco.analysis}</span></div>}
+                    <div style={{ fontWeight:700, fontSize:14, color:"#1c2b1e", marginBottom:10 }}>추천 음식</div>
+                    {(reco.recommendations||[]).filter(r=>r.food).map((r,i) => (
+                      <div key={i} className="rec-card">
+                        <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:8 }}>
+                          <div style={{ width:34, height:34, borderRadius:10, background:"#3a6b34", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16, flexShrink:0 }}>{r.emoji||"🍽️"}</div>
+                          <div><div style={{ fontWeight:700, fontSize:14 }}>{r.food}</div><div style={{ fontSize:11, color:"#5a7a56" }}>{r.nutrients}</div></div>
+                        </div>
+                        <div style={{ fontSize:13, color:"#3a5a36", lineHeight:1.6 }}>{r.reason}</div>
+                      </div>
+                    ))}
+                    {(reco.avoidFoods||[]).length > 0 && <>
+                      <div style={{ fontWeight:700, fontSize:14, color:"#c0402a", margin:"14px 0 8px" }}>피해야 할 음식</div>
+                      <div className="rec-avoid">{reco.avoidFoods.map((f,i) => <span key={i} style={{ display:"inline-block", background:"#fff", border:"1px solid #f5a0a0", color:"#8a2020", fontSize:12, padding:"3px 10px", borderRadius:999, margin:"3px" }}>{f}</span>)}</div>
+                    </>}
+                    {(reco.tips||[]).length > 0 && <>
+                      <div style={{ fontWeight:700, fontSize:14, color:"#2d4a2a", margin:"14px 0 8px" }}>식습관 팁</div>
+                      {reco.tips.map((t,i) => <div key={i} className="alert alert-ok"><span>💡</span><span>{t}</span></div>)}
+                    </>}
+                    {(reco.warnings||[]).length > 0 && <>
+                      <div style={{ fontWeight:700, fontSize:14, color:"#7a5500", margin:"14px 0 8px" }}>주의사항</div>
+                      {reco.warnings.map((w,i) => <div key={i} className="alert alert-warn"><span>⚠️</span><span>{w}</span></div>)}
+                    </>}
+                    <button className="btn btn-outline btn-block btn-sm" style={{ marginTop:10 }} onClick={() => setReco(null)}>다시 추천 받기</button>
+                  </div>
+                )}
+              </div>
+
+              {/* ── REPORT ── */}
+              <div className={`page ${view === "report" ? "active" : ""}`}>
+                <div style={{ fontFamily:"'Fraunces',serif", fontSize:20, color:"#1c2b1e", marginBottom:4 }}>리포트</div>
+                <div style={{ fontSize:13, color:"#7a9076", marginBottom:16 }}>식습관 패턴을 분석해드려요</div>
+                <div style={{ display:"flex", borderBottom:"1px solid #eee", marginBottom:16 }}>
+                  {[["week","주간"],["month","월간"]].map(([p, label]) => (
+                    <button key={p} className={"report-tab" + (reportPeriod === p ? " active" : "")} onClick={() => setReportPeriod(p)}>{label}</button>
+                  ))}
+                </div>
+                {(() => {
+                  const days = reportPeriod === "week" ? 7 : 30;
+                  const periodMeals = meals.filter(m => {
+                    const d = new Date(m.date);
+                    const diff = (new Date() - d) / (1000*60*60*24);
+                    return diff <= days;
+                  });
+                  const avg = days > 0 ? Math.round(periodMeals.reduce((s,m) => s+m.kcal,0) / days) : 0;
+                  const avgProtein = days > 0 ? Math.round(periodMeals.reduce((s,m) => s+m.protein,0) / days) : 0;
+                  const avgSodium = days > 0 ? Math.round(periodMeals.reduce((s,m) => s+m.sodium,0) / days) : 0;
+                  const totalMeals = periodMeals.length;
+                  const barData = [...Array(days === 7 ? 7 : 4)].map((_, i) => {
+                    if (days === 7) {
+                      const d = new Date(); d.setDate(d.getDate() - (6 - i));
+                      const dayMeals = meals.filter(m => m.date === d.toDateString());
+                      return { name: ["일","월","화","수","목","금","토"][d.getDay()], kcal: dayMeals.reduce((s,m) => s+m.kcal,0) };
+                    } else {
+                      const weekStart = new Date(); weekStart.setDate(weekStart.getDate() - (3-i)*7);
+                      const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate() + 7);
+                      const wMeals = meals.filter(m => { const d = new Date(m.date); return d >= weekStart && d < weekEnd; });
+                      return { name: (4-i) + "주 전", kcal: Math.round(wMeals.reduce((s,m) => s+m.kcal,0) / 7) };
+                    }
+                  });
+                  return (
+                    <>
+                      <div className="stat-grid" style={{ gridTemplateColumns:"repeat(2,1fr)", marginBottom:14 }}>
+                        <div className="stat-card"><div className="stat-num">{avg}</div><div className="stat-unit">kcal</div><div className="stat-lbl">일 평균 칼로리</div></div>
+                        <div className="stat-card"><div className="stat-num">{totalMeals}</div><div className="stat-unit">끼</div><div className="stat-lbl">총 식사 기록</div></div>
+                        <div className="stat-card"><div className="stat-num">{avgProtein}g</div><div className="stat-lbl">일 평균 단백질</div></div>
+                        <div className="stat-card"><div className="stat-num" style={{ color: avgSodium > 2000 ? "#c0402a" : "#2d4a2a" }}>{avgSodium}mg</div><div className="stat-lbl">일 평균 나트륨</div></div>
+                      </div>
+                      <div className="card">
+                        <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>{reportPeriod === "week" ? "요일별" : "주별"} 칼로리</div>
+                        <ResponsiveContainer width="100%" height={160}>
+                          <BarChart data={barData} barSize={reportPeriod === "week" ? 28 : 40}>
+                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize:11, fill:"#888" }} />
+                            <YAxis hide />
+                            <Tooltip formatter={v => [v + " kcal", "칼로리"]} contentStyle={{ borderRadius:10, fontSize:12 }} />
+                            <Bar dataKey="kcal" radius={[6,6,0,0]}>
+                              {barData.map((_,i) => <Cell key={i} fill={i === barData.length-1 ? "#a8d5a2" : "#3a6b34"} />)}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="card">
+                        <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>영양 균형 분석</div>
+                        {avg > 0 ? (
+                          [{label:"칼로리",val:avg,max:targetKcal,color:"#3a6b34",unit:"kcal"},{label:"단백질",val:avgProtein,max:60,color:"#4a7a7a",unit:"g"},{label:"나트륨",val:avgSodium,max:2000,color:avgSodium>1800?"#c0402a":"#8a6a30",unit:"mg"}].map(n => (
+                            <div key={n.label} className="nut-row">
+                              <span className="nut-label">{n.label}</span>
+                              <div className="nut-track"><div className="nut-fill" style={{ width:Math.min(100,(n.val/n.max)*100)+"%", background:n.color }} /></div>
+                              <span className="nut-val">{n.val}{n.unit}</span>
+                            </div>
+                          ))
+                        ) : <div style={{ textAlign:"center", color:"#aaa", fontSize:13, padding:"16px 0" }}>아직 데이터가 없어요. 식사를 기록해보세요!</div>}
+                      </div>
+                      <div className="card">
+                        <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>종합 피드백</div>
+                        {avg === 0 && <div style={{ color:"#aaa", fontSize:13 }}>기록된 식사가 없어요.</div>}
+                        {avg > 0 && avg < targetKcal * 0.8 && <div className="pattern-warn"><span>⚠️</span><span>평균 칼로리 섭취가 목표보다 많이 부족해요. 규칙적인 식사를 권장해요.</span></div>}
+                        {avg > 0 && avg > targetKcal * 1.1 && <div className="pattern-red"><span>❗</span><span>평균 칼로리가 목표를 초과하고 있어요. 식사량 조절이 필요해요.</span></div>}
+                        {avg > 0 && avg >= targetKcal * 0.8 && avg <= targetKcal * 1.1 && <div className="pattern-ok"><span>✅</span><span>칼로리 섭취가 목표에 잘 맞고 있어요!</span></div>}
+                        {avgProtein < 40 && avg > 0 && <div className="pattern-red"><span>❗</span><span>단백질 섭취가 지속적으로 부족해요. 두부, 생선, 닭가슴살을 더 드세요.</span></div>}
+                        {avgSodium > 2000 && avg > 0 && <div className="pattern-warn"><span>⚠️</span><span>나트륨 섭취가 권장량을 초과하고 있어요. 싱겁게 드시는 습관을 들여보세요.</span></div>}
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </main>
+
+            {/* Favs Modal */}
+            {showFavs && (
+              <div className="modal-overlay" onClick={() => setShowFavs(false)}>
+                <div className="modal" style={{ maxWidth:420 }} onClick={e => e.stopPropagation()}>
+                  <div className="modal-header">
+                    <div className="modal-av">★</div>
+                    <div style={{ flex:1 }}><div className="modal-name">즐겨찾기</div><div className="modal-email">자주 먹는 음식을 빠르게 등록해요</div></div>
+                    <button onClick={() => setShowFavs(false)} style={{ background:"none", border:"none", cursor:"pointer", color:"#8aad86", fontSize:22 }}>×</button>
+                  </div>
+                  <div className="modal-body">
+                    {favs.length === 0
+                      ? <div style={{ textAlign:"center", padding:"28px 0", color:"#aaa" }}>
+                          <div style={{ fontSize:32, marginBottom:10 }}>★</div>
+                          <div style={{ fontSize:13 }}>즐겨찾기한 음식이 없어요</div>
+                          <div style={{ fontSize:12, marginTop:6, color:"#bbb" }}>식사 기록의 ★ 버튼을 눌러 추가하세요</div>
+                        </div>
+                      : favs.map((f, i) => (
+                        <div key={i} className="fav-card">
+                          <div style={{ width:40, height:40, borderRadius:10, background:"#eef5ec", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>{f.emoji}</div>
+                          <div style={{ flex:1 }}>
+                            <div style={{ fontWeight:600, fontSize:14 }}>{f.name}</div>
+                            <div style={{ fontSize:11, color:"#888", marginTop:2 }}>{f.kcal}kcal · 단백질 {f.protein}g</div>
+                          </div>
+                          <div style={{ display:"flex", gap:6 }}>
+                            <button className="btn btn-primary btn-sm" style={{ padding:"6px 12px", fontSize:12 }} onClick={() => addFavMeal(f)}>+ 추가</button>
+                            <button className="fav-btn active" onClick={() => toggleFav(f)}>★</button>
+                          </div>
+                        </div>
+                      ))
+                    }
+                  </div>
+                  <div style={{ padding:"0 20px 20px" }}>
+                    <button className="btn btn-outline btn-block btn-sm" onClick={() => setShowFavs(false)}>닫기</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <button className="fab" onClick={() => setShowAdd(true)}>+</button>
+
+            <nav className="bottom-nav">
+              {[
+                { id:"dash", icon:"📊", label:"홈" },
+                { id:"analyze", icon:"📷", label:"분석" },
+                { id:"log", icon:"📋", label:"기록" },
+                { id:"report", icon:"📈", label:"리포트" },
+                { id:"rec", icon:"💡", label:"추천" },
+              ].map(n => (
+                <div key={n.id} className={`nav-item ${view === n.id ? "active" : ""}`} onClick={() => setView(n.id)}>
+                  <div className="nav-icon">{n.icon}</div>
+                  <div>{n.label}</div>
+                </div>
+              ))}
+            </nav>
+          </div>
+        </>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyD4dj0km4mgAF5xO5e0ALyibeolx--E_-E",
+  authDomain: "capstone-project-65a90.firebaseapp.com",
+  projectId: "capstone-project-65a90",
+  storageBucket: "capstone-project-65a90.firebasestorage.app",
+  messagingSenderId: "1004212255582",
+  appId: "1:1004212255582:web:9cbfabd66df54648322dcf",
+  measurementId: "G-SX1WZBM228"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+</body>
+</html>
